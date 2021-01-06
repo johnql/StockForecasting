@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>dc.js - Multiple Focus Charts for a Range Chart</title>
+    <meta charset="UTF-8">
+    <link type="text/css" rel="stylesheet" href="https://dc-js.github.io/dc.js/css/dc-floatleft.css"/>
+	<link rel="stylesheet" type="text/css" href="https://dc-js.github.io/dc.js/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="https://dc-js.github.io/dc.js/css/dc.css"/>
+</head>
+<body>
+
+<div class="container">
+<p id="demo"></p>
+<script type="text/javascript" src="header.js"></script>
+<div class="row">
+	<div class="span4">
+		<div id="test1">
+			<strong>Stock Market Index Prediction</strong>&nbsp;(select a time range to zoom in)
+			<div class="clearfix"></div>
+		</div>
+	</div>
+</div>
+
+<div class="row">
+	<div class="span4">
+		<div id="test2">
+			<strong>Stock Market Index Prediction Details</strong>
+			<div class="clearfix"></div>
+		</div>
+	</div>
+</div>
+<div class="row">
+	<div class="span4">
+		<div id="pie1">
+			<strong>Stock Market Index Prediction Accuracy</strong>
+			<div class="clearfix"></div>
+		</div>
+	</div>
+</div>
+
+
+<div class="row">
+      <!--<div id="paging">
+        Showing <span id="begin"></span>-<span id="end"></span> of <span id="size"></span> <span id="totalsize"></span>
+        <input id="last" class="btn" type="Button" value="Last" onclick="javascript:last()" />
+        <input id="next" class="btn" type="button" value="Next" onclick="javascript:next()"/>
+      </div>
+	  <div>
+        <div class="dc-data-count">
+            <span class="filter-count"></span> selected out of <span class="total-count"></span> records
+        </div>
+    </div> -->
+      <table id="test" class="table table-striped"></table>
+    </div>
+	</div>
+
+<script type="text/javascript" src="https://dc-js.github.io/dc.js/js/promise-polyfill.js"></script>
+<script type="text/javascript" src="https://dc-js.github.io/dc.js/js/fetch.umd.js"></script>
+<script type="text/javascript" src="https://dc-js.github.io/dc.js/js/d3.js"></script>
+<script type="text/javascript" src="https://dc-js.github.io/dc.js/js/crossfilter.js"></script>
+<script type="text/javascript" src="https://dc-js.github.io/dc.js/js/dc.js"></script>
+
+<script type="text/javascript">
+var chart1 = dc.compositeChart("#test1");
+var chart2 = dc.compositeChart("#test2");
+//var countChart = dc.dataCount('.dc-data-count');
+//var countChart = dc.dataCount("#line");
+var tableChart = dc.dataTable("#test");
+
+  //+++++++++++++++++++++++++++++++
+  var pieChart = dc.pieChart("#pie1");
+  var ndx          = [
+    { 'Part': 'Gain', 'Average': 53.06, 'Color': "#2200ff" },
+    { 'Part': 'Loss', 'Average': 46.94 , 'Color': "#ff0022" }
+  ];
+  var data = crossfilter(ndx);
+  var runDimension  = data.dimension(function(d) {return d.Part;});
+  var averageGroup = runDimension.group().reduceSum(function(d) {return d.Average;});
+    /***************
+      d3.csv("morley.csv").then(function(experiments) {
+    var ndx           = crossfilter(experiments),
+        runDimension  = ndx.dimension(function(d) {return "run-"+d.Run;})
+        speedSumGroup = runDimension.group().reduceSum(function(d) {return d.Speed * d.Run;});
+  	  *****************/
+    pieChart
+      .width(384)
+      .height(240)
+//      .slicesCap(1)
+      .innerRadius(50)
+      .dimension(runDimension)
+      .group(averageGroup)
+      .legend(dc.legend())
+      .ordinalColors(['blue','red'])
+      // workaround for #703: not enough data is accessible through .label() to display percentages
+      .on('pretransition', function(chart) {
+          chart.selectAll('text.pie-slice').text(function(d) {
+              //text_p= d.data.Part + ':\n %2f%',  d.Average ;
+              //console.log(d.data.key + ': '+  d.data.value + ': ' + d.Color );
+              return d.data.key + ' ' + dc.utils.printSingleValue((d.endAngle - d.startAngle) / (2*Math.PI) * 100) + '%';
+          //    return d.data.key + '\n ' + dc.utils.printSingleValue(d.Average) + '%';;
+          })
+      });
+    pieChart.render();
+
+  //--------------------------------
+d3.csv("stock2.csv").then(function(csv) {
+	var data = crossfilter(csv);
+	/*****************/
+	var dim = data.dimension(function (d) { return new Date(d.Date); });
+	//document.getElementById("demo").innerHTML = JSON.stringify(dim.top(20));
+	var grp1 = dim.group().reduceSum(function (d) { return d.AdjClose; });
+	var grp2 = dim.group().reduceSum(function (d) { return d.MAfor10days; });
+	var grp3 = dim.group().reduceSum(function (d) { return d.MAfor20days; });
+	var grp4 = dim.group().reduceSum(function (d) { return d.MAfor50days; });
+	var grp5 = dim.group().reduceSum(function (d) { return d.MAfor200days; });
+	var grp6 = dim.group().reduceSum(function (d) { return d.Predictions; });
+
+	//document.getElementById("demo").innerHTML = JSON.stringify(grp2.top(20));
+    function bar_chart(chart) {
+        chart
+            .width(900)
+            .height(300)
+            //.x(d3.scaleLinear().domain([6,20]))
+			//.y(d3.scaleLinear().domain([100,300]))
+			.y(d3.scaleLinear().domain([800,1400]))
+			.x(d3.scaleTime().domain([new Date(2018, 10, 15), new Date(2019, 11, 29)]))
+            .brushOn(false)
+            .yAxisLabel("US Dollar")
+			//.elasticX(true)
+			//.elasticY(true)
+			.legend(dc.legend().x(80).y(20).itemHeight(13).gap(5))//
+			.renderHorizontalGridLines(true)
+			.compose([
+            dc.lineChart(chart)
+                .dimension(dim)
+				//.ordering(function(d) { return d.key.Run; })
+                .colors('red')
+                .group(grp1, "Original Data")
+                .dashStyle([0,0]),
+            dc.lineChart(chart)
+                .dimension(dim)
+				//.ordering(function(d) { return d.key.Run; })
+                .colors('green')
+                .group(grp2, "MA for 10 Days")
+                .dashStyle([2,2]),
+			dc.lineChart(chart)
+                .dimension(dim)
+				//.ordering(function(d) { return d.key.Run; })
+                .colors('green')
+                .group(grp3, "MA for 20 Days")
+                .dashStyle([3,3]),
+			dc.lineChart(chart)
+                .dimension(dim)
+				//.ordering(function(d) { return d.key.Run; })
+                .colors('green')
+                .group(grp4, "MA for 50 Days")
+                .dashStyle([4,4]),
+			dc.lineChart(chart)
+                .dimension(dim)
+				//.ordering(function(d) { return d.key.Run; })
+                .colors('green')
+                .group(grp5, "MA for 200 Days")
+                .dashStyle([5,5]),
+			dc.lineChart(chart)
+                .dimension(dim)
+				//.ordering(function(d) { return d.key.Run; })
+                .colors('blue')
+                .group(grp6, "Prediction")
+                .dashStyle([0,0])
+            ])
+        return chart;
+    }
+	tableChart
+          .width(300)
+          .height(480)
+          .dimension(dim)
+          .size(Infinity)
+          .showSections(false)
+          .columns(['Date', 'AdjClose', 'MAfor10days', 'MAfor20days', 'MAfor50days', 'MAfor200days', 'Predictions'])
+          .sortBy(function (d) { return new Date(d.Date); })
+          .order(d3.ascending)
+          //.on('preRender', update_offset)
+          //.on('preRedraw', update_offset)
+          //.on('pretransition', display)
+		  ;
+    bar_chart(chart1)
+        .brushOn(true);
+    bar_chart(chart2);
+    //bar_chart(chart3);
+    //bar_chart(chart4);
+    // this example was inspired by this Stack Overflow question:
+    // http://stackoverflow.com/questions/27445259/dc-js-applying-range-chart-to-multiple-graphs
+    // it would be nice to include the functionality in dc.js proper, but we'd have to deal with the
+    // complementary part of having each focus chart change the range chart when it is zoomed
+    // and that requires more thinking: https://github.com/dc-js/dc.js/issues/820
+    // we need to this helper function out of coordinateGridMixin
+    function rangesEqual(range1, range2) {
+        if (!range1 && !range2) {
+            return true;
+        }
+        else if (!range1 || !range2) {
+            return false;
+        }
+        else if (range1.length === 0 && range2.length === 0) {
+            return true;
+        }
+        else if (range1[0].valueOf() === range2[0].valueOf() &&
+            range1[1].valueOf() === range2[1].valueOf()) {
+            return true;
+        }
+        return false;
+    }
+    // monkey-patch the first chart with a new function
+    // technically we don't even need to do this, we could just change the 'filtered'
+    // event externally, but this is a bit nicer and could be added to dc.js core someday
+    chart1.focusCharts = function (chartlist) {
+        if (!arguments.length) {
+            return this._focusCharts;
+        }
+        this._focusCharts = chartlist; // only needed to support the getter above
+        this.on('filtered', function (range_chart) {
+            chartlist.forEach(function(focus_chart) {
+                if (!rangesEqual(range_chart.filter(), focus_chart.filter())) {
+                    dc.events.trigger(function () {
+                        focus_chart.focus(range_chart.filter());
+                    });
+                }
+            });
+        });
+        return this;
+    };
+    //chart1.focusCharts([chart2,chart3,chart4]);
+    chart1.focusCharts([chart2, tableChart]);
+    dc.renderAll();
+});
+</script>
+
+</div>
+</body>
+</html>
